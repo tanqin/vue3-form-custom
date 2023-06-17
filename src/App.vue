@@ -56,6 +56,15 @@ const elementInfo = reactive<TElementInfo>({
 // 当前操作元素
 const currentElement = ref<HTMLInputElement>()
 
+// 元素信息设置为默认值
+function setDefaultElementInfo() {
+  elementInfo.tagType = ''
+  elementInfo.fieldName = ''
+  elementInfo.elementWidth = ''
+  elementInfo.rows = 6
+  elementInfo.options = defaultOptions
+}
+
 // 获取焦点事件监听函数
 function onFocus(e: FocusEvent) {
   const targetElement = e.target as HTMLInputElement
@@ -64,12 +73,8 @@ function onFocus(e: FocusEvent) {
   // 重新设置新的当前元素
   currentElement.value = targetElement
 
-  // 清空元素信息，避免留存上一个元素的信息
-  elementInfo.tagType = ''
-  elementInfo.fieldName = ''
-  elementInfo.elementWidth = ''
-  elementInfo.rows = 6
-  elementInfo.options = defaultOptions
+  // 元素信息设置为默认值，避免留存上一个元素的信息
+  setDefaultElementInfo()
 
   // 样式高亮
   targetElement.style.outline = 'dashed var(--el-color-primary)'
@@ -213,12 +218,8 @@ watchEffect(() => {
 // 取消当前选中的元素
 function handleCancelSelected() {
   currentElement.value && (currentElement.value.style.outline = 'unset')
-  // 清空元素信息，避免留存上一个元素的信息
-  elementInfo.tagType = ''
-  elementInfo.fieldName = ''
-  elementInfo.elementWidth = ''
-  elementInfo.rows = 6
-  elementInfo.options = defaultOptions
+  // 元素信息设置为默认值，避免留存上一个元素的信息
+  setDefaultElementInfo()
 }
 
 // 添加选择项
