@@ -16,6 +16,11 @@ type TElementInfo = {
   options: TOption[]
 }
 
+// 样式对象 type
+type TElementStyleObject = {
+  [key: string]: string
+}
+
 // 模板容器引用
 const templateRef = ref<HTMLDivElement>()
 // 模板 html 字符串
@@ -107,7 +112,6 @@ function onFocus(e: FocusEvent) {
     )
     // 匹配 <datalist> 元素中的所有 <option> 元素的 value 属性值
     const optionValueMatch = templateHtmlStr.value.match(optionValueRegExp) || []
-    console.log(optionValueMatch)
 
     // 设置下拉选择项
     elementInfo.options = optionValueMatch.map((item) => ({
@@ -157,13 +161,15 @@ watchEffect(() => {
     // 匹配旧元素样式字符串
     const oldElementStyleStr = elementStyleMatch?.[0] || ''
     // 旧元素样式字符串转对象形式
-    const oldElementStyleObj = oldElementStyleStr.split(';').reduce((result: any, prop) => {
-      const [key, value] = prop.split(':').map((item) => item.trim())
-      if (key && value) {
-        result[key] = value
-      }
-      return result
-    }, {})
+    const oldElementStyleObj = oldElementStyleStr
+      .split(';')
+      .reduce((result: TElementStyleObject, prop) => {
+        const [key, value] = prop.split(':').map((item) => item.trim())
+        if (key && value) {
+          result[key] = value
+        }
+        return result
+      }, {})
 
     // 合并生成新元素样式对象
     const newElementStyleObj = Object.assign(oldElementStyleObj, { width: elementWidth })
