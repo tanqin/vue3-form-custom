@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watchEffect, nextTick } from 'vue'
+import { ref, reactive, watchEffect, nextTick, getCurrentInstance } from 'vue'
 import { Operation, Remove } from '@element-plus/icons-vue'
 import { getTemplateStrAPI } from '@/apis'
 // 下拉选择项 type
@@ -21,6 +21,9 @@ type TElementStyleObject = {
   [key: string]: string
 }
 
+// 全局方法
+const { $createId } = getCurrentInstance()!.proxy!
+
 // 模板容器引用
 const templateRef = ref<HTMLDivElement>()
 // 模板 html 字符串
@@ -30,15 +33,15 @@ const formElementList = ref<NodeListOf<Element>>()
 // 默认下拉选择项
 const defaultOptions = [
   {
-    id: Math.random().toString(36).substring(2),
+    id: $createId(),
     label: ''
   },
   {
-    id: Math.random().toString(36).substring(2),
+    id: $createId(),
     label: '选项一'
   },
   {
-    id: Math.random().toString(36).substring(2),
+    id: $createId(),
     label: '选项二'
   }
 ]
@@ -99,7 +102,7 @@ function onFocus(e: FocusEvent) {
 
     // 设置下拉选择项
     elementInfo.options = optionValueMatch.map((item) => ({
-      id: Math.random().toString(36).substring(2),
+      id: $createId(),
       label: item
     }))
   } else if (elementInfo.tagType === 'INPUT_DATALIST') {
@@ -115,7 +118,7 @@ function onFocus(e: FocusEvent) {
 
     // 设置下拉选择项
     elementInfo.options = optionValueMatch.map((item) => ({
-      id: Math.random().toString(36).substring(2),
+      id: $createId(),
       label: item
     }))
   }
@@ -221,7 +224,7 @@ function handleCancelSelected() {
 // 添加选择项
 function handleAddOption() {
   elementInfo.options.push({
-    id: Math.random().toString(36).substring(2),
+    id: $createId(),
     label: ''
   })
 }
