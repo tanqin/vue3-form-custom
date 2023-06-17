@@ -146,12 +146,12 @@ getTemplateStr()
 watchEffect(() => {
   const { tagType, fieldName, elementWidth, rows, options } = elementInfo
   if (!tagType) return
-  // 定义查找元素的正则表达式
-  const regExp = new RegExp(
+  // 定义查找表单元素（input、textarea、select）的正则表达式。说明：(input|textarea|select)分组捕获、\s空白符类、[^ ]取反字符集 共同匹配表单元素开始标签；*? 非贪婪匹配、\1第一个捕获组 共同匹配表单内容和结束标签；\s空白符类、[^ ]取反字符集共同匹配 datalist 标签（当元素类型为【单行文本框（可下拉选择）】时生效）。
+  const elementRegExp = new RegExp(
     `<(input|textarea|select)\\s+[^>]*data-column="${fieldName}"[^>]*>(.*?</\\1>)?(<datalist\\s+[^>]*>.*</datalist>)?`,
     'gm'
   )
-  templateHtmlStr.value = templateHtmlStr.value.replace(regExp, (str) => {
+  templateHtmlStr.value = templateHtmlStr.value.replace(elementRegExp, (str) => {
     // 使用正向后行断言和正向先行断言匹配元素中的行内样式
     const elementStyleMatch = str.match(/(?<=style=")[^"]*(?=")/i)
     // 匹配旧元素样式字符串
@@ -201,6 +201,17 @@ watchEffect(() => {
   listenElement()
 })
 
+// 取消当前选中的元素
+function handleCancelSelected() {
+  currentElement.value && (currentElement.value.style.outline = 'unset')
+  // 清空元素信息，避免留存上一个元素的信息
+  elementInfo.tagType = ''
+  elementInfo.fieldName = ''
+  elementInfo.elementWidth = ''
+  elementInfo.rows = 6
+  elementInfo.options = defaultOptions
+}
+
 // 添加选择项
 function handleAddOption() {
   elementInfo.options.push({
@@ -212,17 +223,6 @@ function handleAddOption() {
 // 移除选择项
 function handleRemove(id: number) {
   elementInfo.options = elementInfo.options.filter((option) => option.id !== id)
-}
-
-// 取消当前选中的元素
-function handleCancelSelected() {
-  currentElement.value && (currentElement.value.style.outline = 'unset')
-  // 清空元素信息，避免留存上一个元素的信息
-  elementInfo.tagType = ''
-  elementInfo.fieldName = ''
-  elementInfo.elementWidth = ''
-  elementInfo.rows = 6
-  elementInfo.options = defaultOptions
 }
 </script>
 
