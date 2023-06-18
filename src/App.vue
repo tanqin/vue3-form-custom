@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { ref, reactive, watchEffect, watch, nextTick, getCurrentInstance } from 'vue'
+import {
+  ref,
+  reactive,
+  watchEffect,
+  watch,
+  nextTick,
+  getCurrentInstance,
+  type CSSProperties
+} from 'vue'
 import { Operation, Remove } from '@element-plus/icons-vue'
 import { getTemplateStrAPI } from '@/apis'
 import { ETagType } from '@/enums/app'
-import type { TElementInfo, TElementStyleObject, TTagType } from '@/types/app'
+import type { TElementInfo, TTagType, TCSSPropertyTuple } from '@/types/app'
 
 // 获取全局挂载的方法
 const { $createId } = getCurrentInstance()!.proxy!
 // 元素类型下拉选项
 const tagTypeList = (Object.keys(ETagType) as TTagType[]).map((key) => ({
-  // key as keyof typeof ETagType 将 key 断言为 ETagType 的键的类型。
   label: ETagType[key],
   value: key
 }))
@@ -38,7 +45,9 @@ const defaultOptions = [
 const elementInfo = reactive<TElementInfo>({
   tagType: undefined,
   fieldName: '',
-  elementWidth: '',
+  style: {
+    width: ''
+  },
   rows: 6,
   options: defaultOptions
 })
@@ -49,7 +58,7 @@ const currentElement = ref<HTMLElement>()
 function setDefaultElementInfo() {
   elementInfo.tagType = undefined
   elementInfo.fieldName = ''
-  elementInfo.elementWidth = ''
+  elementInfo.style.width = ''
   elementInfo.rows = 6
   elementInfo.options = defaultOptions
 }
@@ -79,7 +88,7 @@ function onFocus(e: FocusEvent) {
   // 设置元素信息
   elementInfo.tagType = tagName
   elementInfo.fieldName = targetElement.dataset.column!
-  elementInfo.elementWidth = targetElement.style.width
+  elementInfo.style.width = targetElement.style.width
   if (elementInfo.tagType === 'TEXTAREA') {
     elementInfo.rows = Number(targetElement.getAttribute('rows') || 6)
   } else if (['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType)) {
@@ -151,7 +160,7 @@ async function getTemplateStr() {
 getTemplateStr()
 
 watchEffect(() => {
-  const { tagType, fieldName, elementWidth, rows, options } = elementInfo
+  const { tagType, fieldName, style, rows, options } = elementInfo
   if (!tagType) return
   // 定义查找表单元素（input、textarea、select）的正则表达式。说明：(input|textarea|select)分组捕获、\s空白符类、[^ ]取反字符集 共同匹配表单元素开始标签；*? 非贪婪匹配、\1第一个捕获组 共同匹配表单内容和结束标签；\s空白符类、[^ ]取反字符集共同匹配 datalist 标签（当元素类型为【单行输入框（可下拉选择）】时生效）。
   const elementRegExp = new RegExp(
@@ -167,8 +176,11 @@ watchEffect(() => {
     // 旧元素样式字符串转对象形式
     const oldElementStyleObj = oldElementStyleStr
       .split(';')
-      .reduce((result: TElementStyleObject, prop) => {
-        const [key, value] = prop.split(':').map((item) => item.trim())
+      .reduce((result: CSSProperties, prop) => {
+        // 获取 css 样式属性的键与值
+        const [key, value] = prop
+          .split(':')
+          .map((item) => item.trim()) as unknown as TCSSPropertyTuple
         if (key && value) {
           result[key] = value
         }
@@ -176,7 +188,7 @@ watchEffect(() => {
       }, {})
 
     // 合并生成新元素样式对象
-    const newElementStyleObj = Object.assign(oldElementStyleObj, { width: elementWidth })
+    const newElementStyleObj = Object.assign(oldElementStyleObj, { width: style.width })
     // 新元素样式对象转字符串形式
     let newElementStyleStr = Object.entries(newElementStyleObj)
       .map(([key, value]) => `${key}:${value}`)
@@ -269,8 +281,8 @@ function handleRemove(id: string) {
           <el-form-item label="字段名" prop="fieldName">
             <el-input v-model="elementInfo.fieldName" disabled />
           </el-form-item>
-          <el-form-item label="元素宽度" prop="elementWidth">
-            <el-input v-model="elementInfo.elementWidth" />
+          <el-form-item label="元素宽度" prop="width">
+            <el-input v-model="elementInfo.style.width" />
           </el-form-item>
           <el-form-item label="行数" prop="rows" v-show="elementInfo.tagType === 'TEXTAREA'">
             <el-input-number v-model="elementInfo.rows" :min="1" />
