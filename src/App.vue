@@ -265,7 +265,7 @@ function handleRemove(id: string) {
       </el-main>
       <el-aside class="right-board">
         <h2 class="title">元素属性</h2>
-        <el-form :model="elementInfo" label-width="85px" :disabled="!elementInfo.tagType">
+        <el-form :model="elementInfo" label-width="98px" :disabled="!elementInfo.tagType">
           <el-form-item label="取消选中">
             <el-button
               :type="elementInfo.tagType ? 'primary' : 'info'"
@@ -292,10 +292,38 @@ function handleRemove(id: string) {
           <el-form-item label="元素高度" prop="height">
             <el-input v-model="elementInfo.style.height" />
           </el-form-item>
-          <el-form-item label="元素内边距" prop="padding">
+          <el-form-item prop="padding">
+            <template #label>
+              元素内边距
+              <el-tooltip effect="dark" placement="top-start">
+                <template #content>
+                  <p>解释：元素边框与其实际内容之间留出的空白区域。</p>
+                  <p>举例：</p>
+                  <p>① 10px：上下左右留出的空白区域都是 10px；</p>
+                  <p>② 10px 5px：上下留出 10px 、左右留出 5px；</p>
+                  <p>③ 15px 10px 5px：上留出 15px、左右留出 10px、下留出 5px；</p>
+                  <p>④ 20px 15px 10px 5px：上留出 20px、右留出 15px、下留出 10px、左留出 5px。</p>
+                </template>
+                <el-icon><InfoFilled /></el-icon>
+              </el-tooltip>
+            </template>
             <el-input v-model="elementInfo.style.padding" />
           </el-form-item>
           <el-form-item label="元素外边距" prop="margin">
+            <template #label>
+              元素外边距
+              <el-tooltip effect="dark" placement="top-start">
+                <template #content>
+                  <p>解释：元素边框与相邻元素之间留出的空白区域。</p>
+                  <p>举例：</p>
+                  <p>① 10px：上下左右留出的空白区域都是 10px；</p>
+                  <p>② 10px 5px：上下留出 10px 、左右留出 5px；</p>
+                  <p>③ 15px 10px 5px：上留出 15px、左右留出 10px、下留出 5px；</p>
+                  <p>④ 20px 15px 10px 5px：上留出 20px、右留出 15px、下留出 10px、左留出 5px。</p>
+                </template>
+                <el-icon><InfoFilled /></el-icon>
+              </el-tooltip>
+            </template>
             <el-input v-model="elementInfo.style.margin" />
           </el-form-item>
           <el-form-item label="行数" prop="rows" v-show="elementInfo.tagType === 'TEXTAREA'">
@@ -347,13 +375,19 @@ function handleRemove(id: string) {
 
 <style scoped>
 .right-board {
-  width: 310px;
+  width: 330px;
   padding: 10px;
   border: 1px solid #ccc;
 }
+
 .right-board .title {
   text-align: center;
 }
+
+:deep(.el-form-item) .el-form-item__label {
+  align-items: center !important;
+}
+
 .draggable {
   width: 100%;
 }
