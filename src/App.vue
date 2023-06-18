@@ -58,7 +58,7 @@ const currentElement = ref<HTMLElement>()
 function setDefaultElementInfo() {
   elementInfo.tagType = undefined
   elementInfo.fieldName = ''
-  elementInfo.style.width = ''
+  elementInfo.style = {}
   elementInfo.rows = 6
   elementInfo.options = defaultOptions
 }
@@ -88,7 +88,12 @@ function onFocus(e: FocusEvent) {
   // 设置元素信息
   elementInfo.tagType = tagName
   elementInfo.fieldName = targetElement.dataset.column!
-  elementInfo.style.width = targetElement.style.width
+  elementInfo.style = {
+    width: targetElement.style.width,
+    height: targetElement.style.height,
+    padding: targetElement.style.padding,
+    margin: targetElement.style.margin
+  }
   if (elementInfo.tagType === 'TEXTAREA') {
     elementInfo.rows = Number(targetElement.getAttribute('rows') || 6)
   } else if (['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType)) {
@@ -188,7 +193,7 @@ watchEffect(() => {
       }, {})
 
     // 合并生成新元素样式对象
-    const newElementStyleObj = Object.assign(oldElementStyleObj, { width: style.width })
+    const newElementStyleObj = Object.assign(oldElementStyleObj, style)
     // 新元素样式对象转字符串形式
     let newElementStyleStr = Object.entries(newElementStyleObj)
       .map(([key, value]) => `${key}:${value}`)
@@ -260,7 +265,7 @@ function handleRemove(id: string) {
       </el-main>
       <el-aside class="right-board">
         <h2 class="title">元素属性</h2>
-        <el-form :model="elementInfo" label-width="80px" :disabled="!elementInfo.tagType">
+        <el-form :model="elementInfo" label-width="85px" :disabled="!elementInfo.tagType">
           <el-form-item label="取消选中">
             <el-button
               :type="elementInfo.tagType ? 'primary' : 'info'"
@@ -283,6 +288,15 @@ function handleRemove(id: string) {
           </el-form-item>
           <el-form-item label="元素宽度" prop="width">
             <el-input v-model="elementInfo.style.width" />
+          </el-form-item>
+          <el-form-item label="元素高度" prop="height">
+            <el-input v-model="elementInfo.style.height" />
+          </el-form-item>
+          <el-form-item label="元素内边距" prop="padding">
+            <el-input v-model="elementInfo.style.padding" />
+          </el-form-item>
+          <el-form-item label="元素外边距" prop="margin">
+            <el-input v-model="elementInfo.style.margin" />
           </el-form-item>
           <el-form-item label="行数" prop="rows" v-show="elementInfo.tagType === 'TEXTAREA'">
             <el-input-number v-model="elementInfo.rows" :min="1" />
