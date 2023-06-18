@@ -82,30 +82,32 @@ function onFocus(e: FocusEvent) {
   elementInfo.elementWidth = targetElement.style.width
   if (elementInfo.tagType === 'TEXTAREA') {
     elementInfo.rows = Number(targetElement.getAttribute('rows') || 6)
-  } else if (elementInfo.tagType === 'SELECT') {
-    // 匹配指定 fieldName 对应 <select> 中的所有 <option> 字符串的正则表达式。说明：正向后行断言、\s空白符类、[^ ]取反字符集共同匹配 <option> 之前的内容；*?非贪婪匹配 <option> 字符串；正向先行断言匹配 <option> 之后的内容。
-    const optionRegExp = new RegExp(
-      `(?<=<select\\s+data-column="${elementInfo.fieldName}"(?:\\s+[^>]+)?>).*?(?=</select>)`,
-      'gm'
-    )
-    // 匹配指定 fieldName 对应 <select> 中的所有 <option> 字符串
-    const optionStr = templateHtmlStr.value.match(optionRegExp)?.[0] || ''
-    // 匹配所有 <option> 中的 value。说明：正向后行断言、\s空白符类、[^ ]取反字符集共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言、\s空白符类、[^ ]取反字符集共同匹配 value 属性值之后的内容。
-    const optionValueMatch = optionStr.match(/(?<=<option\s+[^>]*value=").*?(?="\s?[^>]*>)/gm) || []
-    // 设置下拉选择项
-    elementInfo.options = optionValueMatch.map((item) => ({
-      id: $createId(),
-      label: item
-    }))
-  } else if (elementInfo.tagType === 'INPUT_DATALIST') {
-    // 通过元素 list 属性获取到它所绑定的 <datalist> 元素的 id
-    const datalistId = targetElement.getAttribute('list')
-    // 定义通过 datalistId 查找对应 <datalist> 元素中的所有 <option> 元素的 value 属性值的正则表达式。说明：正向后行断言、\s空白符类、[^ ]取反字符集共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言匹配 value 属性值之后的内容。
+  } else if (['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType)) {
+    // 要匹配的标签
+    let matchTag = null
+    // 要匹配的属性
+    let matchAttribute = null
+    // 要匹配的属性值
+    let matchAttributeValue = null
+    switch (elementInfo.tagType) {
+      case 'SELECT':
+        matchTag = 'select'
+        matchAttribute = 'data-column'
+        matchAttributeValue = elementInfo.fieldName
+        break
+      case 'INPUT_DATALIST':
+        matchTag = 'datalist'
+        matchAttribute = 'id'
+        // 通过元素 list 属性获取到它所绑定的 <datalist> 元素的 id
+        matchAttributeValue = targetElement.getAttribute('list')
+        break
+    }
+    // 定义通过 matchAttribute 查找对应 <matchTag> 元素中的所有 <option> 元素的 value 属性值的正则表达式。说明：正向后行断言、\s空白符类、[^ ]取反字符集、?!负向先行断言共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言匹配 value 属性值之后的内容。
     const optionValueRegExp = new RegExp(
-      `(?<=<datalist\\s+[^>]*id="${datalistId}"[^>]*>\\s*(.(?!<input))+value=").*?(?=">.+</datalist>)`,
+      `(?<=<${matchTag}\\s+[^>]*${matchAttribute}="${matchAttributeValue}"[^>]*>(.(?!data-column))+value=").*?(?=">.+</${matchTag}>)`,
       'gm'
     )
-    // 匹配 <datalist> 元素中的所有 <option> 元素的 value 属性值
+    // 匹配所有 <option> 元素的 value 属性值
     const optionValueMatch = templateHtmlStr.value.match(optionValueRegExp) || []
     // 设置下拉选择项
     elementInfo.options = optionValueMatch.map((item) => ({
