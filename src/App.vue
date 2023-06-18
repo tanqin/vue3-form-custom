@@ -2,28 +2,17 @@
 import { ref, reactive, watchEffect, nextTick, getCurrentInstance } from 'vue'
 import { Operation, Remove } from '@element-plus/icons-vue'
 import { getTemplateStrAPI } from '@/apis'
-// 下拉选择项 type
-type TOption = {
-  id: number | string
-  label: string
-}
-// 元素信息 type
-type TElementInfo = {
-  tagType: string
-  fieldName: string
-  elementWidth: string
-  rows: number
-  options: TOption[]
-}
+import { ETagType } from '@/enums/app'
+import type { TElementInfo, TElementStyleObject, TTagType } from '@/types/app'
 
-// 样式对象 type
-type TElementStyleObject = {
-  [key: string]: string
-}
-
-// 全局方法
+// 获取全局挂载的方法
 const { $createId } = getCurrentInstance()!.proxy!
-
+// 元素类型下拉选项
+const tagTypeList = (Object.keys(ETagType) as TTagType[]).map((key) => ({
+  // key as keyof typeof ETagType 将 key 断言为 ETagType 的键的类型。
+  label: ETagType[key],
+  value: key
+}))
 // 模板容器引用
 const templateRef = ref<HTMLDivElement>()
 // 模板 html 字符串
@@ -47,18 +36,18 @@ const defaultOptions = [
 ]
 // 元素信息
 const elementInfo = reactive<TElementInfo>({
-  tagType: '',
+  tagType: undefined,
   fieldName: '',
   elementWidth: '',
   rows: 6,
   options: defaultOptions
 })
 // 当前操作元素
-const currentElement = ref<HTMLInputElement>()
+const currentElement = ref<HTMLElement>()
 
 // 元素信息设置为默认值
 function setDefaultElementInfo() {
-  elementInfo.tagType = ''
+  elementInfo.tagType = undefined
   elementInfo.fieldName = ''
   elementInfo.elementWidth = ''
   elementInfo.rows = 6
@@ -67,7 +56,7 @@ function setDefaultElementInfo() {
 
 // 获取焦点事件监听函数
 function onFocus(e: FocusEvent) {
-  const targetElement = e.target as HTMLInputElement
+  const targetElement = e.target as HTMLElement
   // 去除上一个聚焦元素的样式高亮
   currentElement.value && (currentElement.value.style.outline = 'unset')
   // 重新设置新的当前元素
@@ -80,11 +69,11 @@ function onFocus(e: FocusEvent) {
   targetElement.style.outline = 'dashed var(--el-color-primary)'
 
   // 获取元素标签名
-  let tagName = targetElement.tagName
+  let tagName = targetElement.tagName as TTagType
   // 查询下一个兄弟元素标签名
   const nextTagName = targetElement.nextElementSibling?.tagName
   if (nextTagName === 'DATALIST') {
-    tagName = tagName + '_' + nextTagName
+    tagName = (tagName + '_' + nextTagName) as TTagType
   }
 
   // 设置元素信息
@@ -101,10 +90,8 @@ function onFocus(e: FocusEvent) {
     )
     // 匹配指定 fieldName 对应 <select> 中的所有 <option> 字符串
     const optionStr = templateHtmlStr.value.match(optionRegExp)?.[0] || ''
-
     // 匹配所有 <option> 中的 value。说明：正向后行断言、\s空白符类、[^ ]取反字符集共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言、\s空白符类、[^ ]取反字符集共同匹配 value 属性值之后的内容。
-    const optionValueMatch = optionStr.match(/(?<=<option\s+[^>]*value=").*?(?="\s?[^>]*>)/g) || []
-
+    const optionValueMatch = optionStr.match(/(?<=<option\s+[^>]*value=").*?(?="\s?[^>]*>)/gm) || []
     // 设置下拉选择项
     elementInfo.options = optionValueMatch.map((item) => ({
       id: $createId(),
@@ -115,12 +102,11 @@ function onFocus(e: FocusEvent) {
     const datalistId = targetElement.getAttribute('list')
     // 定义通过 datalistId 查找对应 <datalist> 元素中的所有 <option> 元素的 value 属性值的正则表达式。说明：正向后行断言、\s空白符类、[^ ]取反字符集共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言匹配 value 属性值之后的内容。
     const optionValueRegExp = new RegExp(
-      `(?<=<datalist\\s+[^>]*id="${datalistId}"[^>]*>.+value=").*?(?=">.+</datalist>)`,
+      `(?<=<datalist\\s+[^>]*id="${datalistId}"[^>]*>\\s*(.(?!<input))+value=").*?(?=">.+</datalist>)`,
       'gm'
     )
     // 匹配 <datalist> 元素中的所有 <option> 元素的 value 属性值
     const optionValueMatch = templateHtmlStr.value.match(optionValueRegExp) || []
-
     // 设置下拉选择项
     elementInfo.options = optionValueMatch.map((item) => ({
       id: $createId(),
@@ -129,18 +115,18 @@ function onFocus(e: FocusEvent) {
   }
 }
 
-// 监听页面元素
+// 监听表单元素
 async function listenElement() {
   await nextTick()
   // 获取所有的表单元素元素
   formElementList.value = templateRef.value?.querySelectorAll('input,textarea,select')
   formElementList.value?.forEach((formElement) => {
-    const element = formElement as HTMLInputElement
+    const element = formElement as HTMLElement
     element.addEventListener('focus', onFocus)
     if (element.dataset.column === elementInfo.fieldName) {
       // 由于元素信息发生改变后页面重新渲染，内存地址发生改变，需要根据字段名找到当前操作元素并重新设置
       currentElement.value = element
-      // 由于元素信息发生改变后页面重新渲染，导致原本获得焦点的元素会失焦样式高亮丢失，所需需要重新找到该元素并使其高亮。注：此处不能让元素元素重新聚焦，聚焦会使右侧操作栏每次修改元素元素信息时都会使元素元素聚焦，导致修改一次后想再次修改必须重新点击操作栏
+      // 由于元素信息发生改变后页面重新渲染，导致原本获得焦点的元素会失焦样式高亮丢失，所需需要重新找到该元素并使其高亮。注：此处不能让元素元素重新聚焦，聚焦会使右侧操作栏每次修改元素信息时都会使元素元素聚焦，导致修改一次后想再次修改必须重新点击操作栏
       element.style.outline = 'dashed var(--el-color-primary)'
     }
   })
@@ -158,11 +144,12 @@ getTemplateStr()
 watchEffect(() => {
   const { tagType, fieldName, elementWidth, rows, options } = elementInfo
   if (!tagType) return
-  // 定义查找表单元素（input、textarea、select）的正则表达式。说明：(input|textarea|select)分组捕获、\s空白符类、[^ ]取反字符集 共同匹配表单元素开始标签；*? 非贪婪匹配、\1第一个捕获组 共同匹配表单内容和结束标签；\s空白符类、[^ ]取反字符集共同匹配 datalist 标签（当元素类型为【单行文本框（可下拉选择）】时生效）。
+  // 定义查找表单元素（input、textarea、select）的正则表达式。说明：(input|textarea|select)分组捕获、\s空白符类、[^ ]取反字符集 共同匹配表单元素开始标签；*? 非贪婪匹配、\1第一个捕获组 共同匹配表单内容和结束标签；\s空白符类、[^ ]取反字符集共同匹配 datalist 标签（当元素类型为【单行输入框（可下拉选择）】时生效）。
   const elementRegExp = new RegExp(
-    `<(input|textarea|select)\\s+[^>]*data-column="${fieldName}"[^>]*>(.*?</\\1>)?(<datalist\\s+[^>]*>.*</datalist>)?`,
+    `<(input|textarea|select)\\s+[^>]*data-column="${fieldName}"[^>]*>(.*?</\\1>)?(<datalist\\s+[^>]*>.*?</datalist>)?`,
     'gm'
   )
+  // 元素信息改变，变更模板的 html 字符串
   templateHtmlStr.value = templateHtmlStr.value.replace(elementRegExp, (str) => {
     // 使用正向后行断言和正向先行断言匹配元素中的行内样式
     const elementStyleMatch = str.match(/(?<=style=")[^"]*(?=")/i)
@@ -231,7 +218,7 @@ function handleAddOption() {
 }
 
 // 移除选择项
-function handleRemove(id: number) {
+function handleRemove(id: string) {
   elementInfo.options = elementInfo.options.filter((option) => option.id !== id)
 }
 </script>
@@ -255,12 +242,7 @@ function handleRemove(id: number) {
           <el-form-item label="元素类型" prop="tagType">
             <el-select v-model="elementInfo.tagType" placeholder="元素类型">
               <el-option
-                v-for="item in [
-                  { label: '单行文本框', value: 'INPUT' },
-                  { label: '多行文本框', value: 'TEXTAREA' },
-                  { label: '下拉选择框', value: 'SELECT' },
-                  { label: '单行文本框（可下拉选择）', value: 'INPUT_DATALIST' }
-                ]"
+                v-for="item in tagTypeList"
                 :key="item.value"
                 :label="item.label"
                 :value="item.value"
@@ -279,7 +261,7 @@ function handleRemove(id: number) {
           <el-form-item
             prop="options"
             label-width="0"
-            v-show="['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType)"
+            v-show="['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType!)"
           >
             <el-divider content-position="left">下拉选择项（拖拽自动排序）</el-divider>
             <Draggable
