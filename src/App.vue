@@ -267,21 +267,26 @@ function handleRemove(id: string) {
           >
             <el-divider content-position="left">下拉选择项（拖拽自动排序）</el-divider>
             <Draggable
-              :list="elementInfo.options"
+              class="draggable"
               ghost-class="ghost-class"
               chosen-class="chosen-class"
               itemKey="id"
               animation="300"
               handle=".operation-icon"
+              :list="elementInfo.options"
             >
               <template #item="{ element, index }">
-                <el-row :gutter="10" class="item" align="bottom" v-show="index !== 0">
+                <el-row :gutter="10" class="option-item" align="bottom" v-show="index !== 0">
                   <el-col :span="2"
-                    ><el-icon class="operation-icon"><Operation /></el-icon
+                    ><el-icon class="operation-icon" color="var(--el-color-info)"
+                      ><Operation /></el-icon
                   ></el-col>
                   <el-col :span="20"><el-input v-model="element.label"> </el-input></el-col>
                   <el-col :span="2">
-                    <el-icon color="#f56c6c" class="remove-icon" @click="handleRemove(element.id)"
+                    <el-icon
+                      class="remove-icon"
+                      color="var(--el-color-danger)"
+                      @click="handleRemove(element.id)"
                       ><Remove
                     /></el-icon>
                   </el-col>
@@ -300,35 +305,6 @@ function handleRemove(id: string) {
 </template>
 
 <style scoped>
-.itxst {
-  width: 600px;
-  display: flex;
-}
-.itxst > div:nth-of-type(1) {
-  flex: 1;
-}
-.itxst > div:nth-of-type(2) {
-  padding-left: 20px;
-}
-.item {
-  font-size: 20px;
-}
-
-.operation-icon:hover {
-  cursor: move;
-}
-.remove-icon:hover {
-  cursor: pointer;
-}
-.item + .item {
-  margin-top: 10px;
-}
-.ghost-class {
-  border: solid 1px rgb(19, 41, 239);
-}
-.chosen-class {
-  background-color: #f1f1f1;
-}
 .right-board {
   width: 310px;
   padding: 10px;
@@ -336,5 +312,33 @@ function handleRemove(id: string) {
 }
 .right-board .title {
   text-align: center;
+}
+.draggable {
+  width: 100%;
+}
+
+/* 拖动元素的占位符样式 */
+.ghost-class {
+  border: 1px solid var(--el-color-primary);
+}
+/* 被选中的目标元素样式 */
+.chosen-class {
+  background-color: #f1f1f1;
+}
+
+.option-item {
+  font-size: 20px;
+}
+
+.option-item + .option-item {
+  margin-top: 10px;
+}
+
+.operation-icon:hover {
+  cursor: move;
+}
+
+.remove-icon:hover {
+  cursor: pointer;
 }
 </style>
