@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, watchEffect, nextTick, getCurrentInstance } from 'vue'
+import { ref, reactive, watchEffect, watch, nextTick, getCurrentInstance } from 'vue'
 import { Operation, Remove } from '@element-plus/icons-vue'
 import { getTemplateStrAPI } from '@/apis'
 import { ETagType } from '@/enums/app'
@@ -134,11 +134,18 @@ async function listenElement() {
   })
 }
 
+// 移除监听表单元素
+function removeListenElement() {
+  formElementList.value?.forEach((formElement) => {
+    const element = formElement as HTMLElement
+    element.removeEventListener('focus', onFocus)
+  })
+}
+
 // 获取模板 html 字符串
 async function getTemplateStr() {
   const res = await getTemplateStrAPI()
   templateHtmlStr.value = res
-  listenElement()
 }
 
 getTemplateStr()
@@ -201,8 +208,16 @@ watchEffect(() => {
 
     return newElementHTMLStr
   })
-  listenElement()
 })
+
+watch(
+  () => templateHtmlStr.value,
+  () => {
+    // 每当模板 html 字符串发生变化时，先移除旧表单元素的所有 focus 事件监听器，再重新对新表单元素进行监听，以避免内存泄漏和性能问题
+    removeListenElement()
+    listenElement()
+  }
+)
 
 // 取消当前选中的元素
 function handleCancelSelected() {
