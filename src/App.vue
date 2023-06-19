@@ -9,16 +9,11 @@ import {
   type CSSProperties
 } from 'vue'
 import { getTemplateStrAPI } from '@/apis'
-import { ETagType } from '@/enums/app'
-import type { TOption, TElementInfo, TTagType, TCSSPropertyTuple } from '@/types/app'
+import { tagTypeList } from '@/enums/app.enum'
+import type { TOption, TElementInfo, TTagType, TCSSPropertyTuple } from '@/types/app.type'
 
 // 获取全局挂载的方法
 const { $createId } = getCurrentInstance()!.proxy!
-// 元素类型下拉选项
-const tagTypeList = (Object.keys(ETagType) as TTagType[]).map((key) => ({
-  label: ETagType[key],
-  value: key
-}))
 // 模板容器引用
 const templateRef = ref<HTMLDivElement>()
 // 模板 html 字符串
@@ -115,7 +110,7 @@ function onFocus(e: FocusEvent) {
         matchAttributeValue = targetElement.getAttribute('list')
         break
     }
-    // 定义通过 matchAttribute 查找对应 <matchTag> 元素中的所有 <option> 元素的 value 属性值的正则表达式。说明：正向后行断言、\s空白符类、[^ ]取反字符集、?!负向先行断言共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言匹配 value 属性值之后的内容。
+    // 定义通过 matchAttribute 查找对应 <matchTag> 元素中的所有 <option> 元素的 value 属性值的正则表达式。说明：?<=正向后行断言、\s空白符类、[^ ]取反字符集、?!负向先行断言共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；?=正向先行断言匹配 value 属性值之后的内容。
     const optionValueRegExp = new RegExp(
       `(?<=<${matchTag}\\s+[^>]*${matchAttribute}="${matchAttributeValue}"[^>]*>(.(?!data-column))+value=").*?(?="[^>]*>.+</${matchTag}>)`,
       'gm'

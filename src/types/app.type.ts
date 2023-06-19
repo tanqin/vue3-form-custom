@@ -1,4 +1,4 @@
-import { ETagType } from '@/enums/app'
+import { ETagType } from '@/enums/app.enum'
 import type { CSSProperties } from 'vue'
 
 /* 标签类型。说明：typeof ETagType 将枚举转成 type 类型；keyof 获取 type 类型中所有 key 组成联合类型 */
