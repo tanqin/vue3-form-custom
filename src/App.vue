@@ -8,10 +8,9 @@ import {
   getCurrentInstance,
   type CSSProperties
 } from 'vue'
-import { Operation, Remove } from '@element-plus/icons-vue'
 import { getTemplateStrAPI } from '@/apis'
 import { ETagType } from '@/enums/app'
-import type { TElementInfo, TTagType, TCSSPropertyTuple } from '@/types/app'
+import type { TOption, TElementInfo, TTagType, TCSSPropertyTuple } from '@/types/app'
 
 // 获取全局挂载的方法
 const { $createId } = getCurrentInstance()!.proxy!
@@ -25,11 +24,11 @@ const templateRef = ref<HTMLDivElement>()
 // 模板 html 字符串
 const templateHtmlStr = ref('')
 // 表单元素列表
-const formElementList = ref<NodeListOf<Element>>()
+const formElementList = ref<NodeListOf<HTMLElement>>()
 // 默认下拉选择项
-const defaultOptions = [
+const defaultOptions: TOption[] = [
   {
-    id: $createId(),
+    id: '-1',
     label: ''
   },
   {
@@ -118,7 +117,7 @@ function onFocus(e: FocusEvent) {
     }
     // 定义通过 matchAttribute 查找对应 <matchTag> 元素中的所有 <option> 元素的 value 属性值的正则表达式。说明：正向后行断言、\s空白符类、[^ ]取反字符集、?!负向先行断言共同匹配 value 属性值之前的内容；*?非贪婪匹配 value 属性值；正向先行断言匹配 value 属性值之后的内容。
     const optionValueRegExp = new RegExp(
-      `(?<=<${matchTag}\\s+[^>]*${matchAttribute}="${matchAttributeValue}"[^>]*>(.(?!data-column))+value=").*?(?=">.+</${matchTag}>)`,
+      `(?<=<${matchTag}\\s+[^>]*${matchAttribute}="${matchAttributeValue}"[^>]*>(.(?!data-column))+value=").*?(?="[^>]*>.+</${matchTag}>)`,
       'gm'
     )
     // 匹配所有 <option> 元素的 value 属性值
@@ -137,7 +136,7 @@ async function listenElement() {
   // 获取所有的表单元素元素
   formElementList.value = templateRef.value?.querySelectorAll('input,textarea,select')
   formElementList.value?.forEach((formElement) => {
-    const element = formElement as HTMLElement
+    const element = formElement
     element.addEventListener('focus', onFocus)
     if (element.dataset.column === elementInfo.fieldName) {
       // 由于元素信息发生改变后页面重新渲染，内存地址发生改变，需要根据字段名找到当前操作元素并重新设置
@@ -151,7 +150,7 @@ async function listenElement() {
 // 移除监听表单元素
 function removeListenElement() {
   formElementList.value?.forEach((formElement) => {
-    const element = formElement as HTMLElement
+    const element = formElement
     element.removeEventListener('focus', onFocus)
   })
 }
@@ -203,7 +202,12 @@ watchEffect(() => {
     let newElementHTMLStr = ''
     // 生成 <option> 元素字符串
     const optionElementHTMLStr = options
-      .map((option) => `<option value="${option.label}">${option.label}</option>`)
+      .map(
+        (option, index) =>
+          `<option ${index === 0 ? 'selected disabled' : ''}  value="${option.label}">${
+            index === 0 ? '--请选择--' : option.label
+          }</option>`
+      )
       .join('')
     switch (tagType) {
       case 'INPUT':
@@ -238,8 +242,9 @@ watch(
 
 // 取消当前选中的元素
 function handleCancelSelected() {
+  // 取消当前选中元素的样式高亮
   currentElement.value && (currentElement.value.style.outline = 'unset')
-  // 元素信息设置为默认值，避免留存上一个元素的信息
+  // 元素信息设置为默认值
   setDefaultElementInfo()
 }
 
@@ -264,7 +269,7 @@ function handleRemove(id: string) {
         <div ref="templateRef" v-html="templateHtmlStr"></div>
       </el-main>
       <el-aside class="right-board">
-        <h2 class="title">元素属性</h2>
+        <h2 class="title">元素信息</h2>
         <el-form :model="elementInfo" label-width="98px" :disabled="!elementInfo.tagType">
           <el-form-item label="取消选中">
             <el-button

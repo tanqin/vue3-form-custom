@@ -10,6 +10,8 @@ export type TOption = {
   id: string
   // 选择项文本
   label: string
+  // 选择项文本对应的值（当不提供 value 时，下拉选项中的 label 与 value 将会是同一个值 ）
+  // value?: string | number
 }
 
 /* 元素信息 */
