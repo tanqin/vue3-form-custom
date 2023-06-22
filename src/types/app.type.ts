@@ -28,6 +28,12 @@ export type TElementInfo = {
   options: TOption[]
 }
 
+/* 页面信息 */
+export type TPageInfo = {
+  // 元素样式
+  style: CSSProperties
+}
+
 /* CSS属性元组 */
 // 💥 由于使用 keyof CSSProperties 获取 css 属性键会导致 TS 报错：【表达式生成的联合类型过于复杂，无法表示】。所以这里暂时使用自定义联合类型
 export type TCSSPropertyTuple = [

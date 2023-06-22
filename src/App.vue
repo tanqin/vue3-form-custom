@@ -10,7 +10,13 @@ import {
 } from 'vue'
 import { getTemplateStrAPI } from '@/apis'
 import { tagTypeList } from '@/enums/app.enum'
-import type { TOption, TElementInfo, TTagType, TCSSPropertyTuple } from '@/types/app.type'
+import type {
+  TOption,
+  TElementInfo,
+  TTagType,
+  TPageInfo,
+  TCSSPropertyTuple
+} from '@/types/app.type'
 
 // 获取全局挂载的方法
 const { $createId } = getCurrentInstance()!.proxy!
@@ -56,6 +62,11 @@ function setDefaultElementInfo() {
   elementInfo.rows = 6
   elementInfo.options = defaultOptions
 }
+
+// 页面信息
+const pageInfo = reactive<TPageInfo>({
+  style: {}
+})
 
 // 获取焦点事件监听函数
 function onFocus(e: FocusEvent) {
@@ -128,16 +139,17 @@ function onFocus(e: FocusEvent) {
 // 监听表单元素
 async function listenElement() {
   await nextTick()
-  // 获取所有的表单元素元素
+  // 获取所有的表单元素
   formElementList.value = templateRef.value?.querySelectorAll('input,textarea,select')
   formElementList.value?.forEach((formElement) => {
-    const element = formElement
-    element.addEventListener('focus', onFocus)
-    if (element.dataset.column === elementInfo.fieldName) {
+    // 将表单元素字体大小设置为同页面字体大小一致
+    formElement.style.fontSize = pageInfo.style['font-size'] as string
+    formElement.addEventListener('focus', onFocus)
+    if (formElement.dataset.column === elementInfo.fieldName) {
       // 由于元素信息发生改变后页面重新渲染，内存地址发生改变，需要根据字段名找到当前操作元素并重新设置
-      currentElement.value = element
+      currentElement.value = formElement
       // 由于元素信息发生改变后页面重新渲染，导致原本获得焦点的元素会失焦样式高亮丢失，所需需要重新找到该元素并使其高亮。注：此处不能让元素元素重新聚焦，聚焦会使右侧操作栏每次修改元素信息时都会使元素元素聚焦，导致修改一次后想再次修改必须重新点击操作栏
-      element.style.outline = 'dashed var(--el-color-primary)'
+      formElement.style.outline = 'dashed var(--el-color-primary)'
     }
   })
 }
@@ -145,19 +157,30 @@ async function listenElement() {
 // 移除监听表单元素
 function removeListenElement() {
   formElementList.value?.forEach((formElement) => {
-    const element = formElement
-    element.removeEventListener('focus', onFocus)
+    formElement.removeEventListener('focus', onFocus)
   })
+}
+
+// 初始化模板 html 字符串
+function initTemplateHtmlStr(templateHtmlStr: string) {
+  // 去除所有图片 && 初始化页面样式。行高: 1.8; 字号: 18px
+  templateHtmlStr = templateHtmlStr
+    .replace(/<img[^>]*>/g, '')
+    .replace(/<div[^>]*>/, `<div style="line-height: 1.8;font-size: 18px">`)
+  return templateHtmlStr
 }
 
 // 获取模板 html 字符串
 async function getTemplateStr() {
   const res = await getTemplateStrAPI()
-  templateHtmlStr.value = res
+  templateHtmlStr.value = initTemplateHtmlStr(res)
+  await nextTick()
+  setPageInfo()
 }
 
 getTemplateStr()
 
+// 元素信息改变时，处理模板 html
 watchEffect(() => {
   const { tagType, fieldName, style, rows, options } = elementInfo
   if (!tagType) return
@@ -226,6 +249,43 @@ watchEffect(() => {
   })
 })
 
+// 设置页面初始信息。立即执行，只在 created 阶段执行一次
+function setPageInfo() {
+  // 页面样式字符串
+  const pageStyleStr = templateRef.value?.lastElementChild?.attributes[0]?.value || ''
+  // 页面样式字符串转对象形式
+  const pageStyleObj = pageStyleStr.split(';').reduce((result: CSSProperties, prop) => {
+    // 获取 css 样式属性的键与值
+    const [key, value] = prop.split(':').map((item) => item.trim()) as unknown as TCSSPropertyTuple
+    if (key && value) {
+      result[key] = value
+    }
+    return result
+  }, {})
+  // 若存在行高，则将行高字符串转为数字形式
+  pageStyleObj['line-height'] && (pageStyleObj['line-height'] = Number(pageStyleObj['line-height']))
+  pageInfo.style = pageStyleObj
+}
+
+// 页面信息改变时，处理模板 html
+watch(
+  () => pageInfo.style,
+  (style) => {
+    const styleStr = Object.entries(style)
+      .map(([key, value]) => `${key}:${value}`)
+      .join(';')
+    if (styleStr) {
+      templateHtmlStr.value = templateHtmlStr.value.replace(
+        /<div[^>]*>/,
+        `<div style="${styleStr}">`
+      )
+    }
+  },
+  {
+    deep: true
+  }
+)
+
 watch(
   () => templateHtmlStr.value,
   () => {
@@ -264,110 +324,132 @@ function handleRemove(id: string) {
         <div ref="templateRef" v-html="templateHtmlStr"></div>
       </el-main>
       <el-aside class="right-board">
-        <h2 class="title">元素信息</h2>
-        <el-form :model="elementInfo" label-width="98px" :disabled="!elementInfo.tagType">
-          <el-form-item label="取消选中">
-            <el-button
-              :type="elementInfo.tagType ? 'primary' : 'info'"
-              @click="handleCancelSelected"
-              >取消当前选中元素</el-button
-            >
-          </el-form-item>
-          <el-form-item label="元素类型" prop="tagType">
-            <el-select v-model="elementInfo.tagType" placeholder="元素类型">
-              <el-option
-                v-for="item in tagTypeList"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </el-form-item>
-          <el-form-item label="字段名" prop="fieldName">
-            <el-input v-model="elementInfo.fieldName" disabled />
-          </el-form-item>
-          <el-form-item label="元素宽度" prop="width">
-            <el-input v-model="elementInfo.style.width" />
-          </el-form-item>
-          <el-form-item label="元素高度" prop="height">
-            <el-input v-model="elementInfo.style.height" />
-          </el-form-item>
-          <el-form-item prop="padding">
-            <template #label>
-              元素内边距
-              <el-tooltip effect="dark" placement="top-start">
-                <template #content>
-                  <p>解释：元素边框与其实际内容之间留出的空白区域。</p>
-                  <p>举例：</p>
-                  <p>① 10px：上下左右留出的空白区域都是 10px；</p>
-                  <p>② 10px 5px：上下留出 10px 、左右留出 5px；</p>
-                  <p>③ 15px 10px 5px：上留出 15px、左右留出 10px、下留出 5px；</p>
-                  <p>④ 20px 15px 10px 5px：上留出 20px、右留出 15px、下留出 10px、左留出 5px。</p>
+        <el-tabs stretch>
+          <el-tab-pane label="元素信息">
+            <el-form :model="elementInfo" label-width="98px" :disabled="!elementInfo.tagType">
+              <el-form-item label="取消选中">
+                <el-button
+                  :type="elementInfo.tagType ? 'primary' : 'info'"
+                  @click="handleCancelSelected"
+                  >取消当前选中元素</el-button
+                >
+              </el-form-item>
+              <el-form-item label="元素类型" prop="tagType">
+                <el-select v-model="elementInfo.tagType" placeholder="元素类型">
+                  <el-option
+                    v-for="item in tagTypeList"
+                    :key="item.value"
+                    :label="item.label"
+                    :value="item.value"
+                  />
+                </el-select>
+              </el-form-item>
+              <el-form-item label="字段名" prop="fieldName">
+                <el-input v-model="elementInfo.fieldName" disabled />
+              </el-form-item>
+              <el-form-item label="元素宽度" prop="width">
+                <el-input v-model="elementInfo.style.width" />
+              </el-form-item>
+              <el-form-item label="元素高度" prop="height">
+                <el-input v-model="elementInfo.style.height" />
+              </el-form-item>
+              <el-form-item prop="padding">
+                <template #label>
+                  元素内边距
+                  <el-tooltip effect="dark" placement="top-start">
+                    <template #content>
+                      <p>解释：元素边框与其实际内容之间留出的空白区域。</p>
+                      <p>举例：</p>
+                      <p>① 10px：上下左右留出的空白区域都是 10px；</p>
+                      <p>② 10px 5px：上下留出 10px 、左右留出 5px；</p>
+                      <p>③ 15px 10px 5px：上留出 15px、左右留出 10px、下留出 5px；</p>
+                      <p>
+                        ④ 20px 15px 10px 5px：上留出 20px、右留出 15px、下留出 10px、左留出 5px。
+                      </p>
+                    </template>
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-tooltip>
                 </template>
-                <el-icon><InfoFilled /></el-icon>
-              </el-tooltip>
-            </template>
-            <el-input v-model="elementInfo.style.padding" />
-          </el-form-item>
-          <el-form-item label="元素外边距" prop="margin">
-            <template #label>
-              元素外边距
-              <el-tooltip effect="dark" placement="top-start">
-                <template #content>
-                  <p>解释：元素边框与相邻元素之间留出的空白区域。</p>
-                  <p>举例：</p>
-                  <p>① 10px：上下左右留出的空白区域都是 10px；</p>
-                  <p>② 10px 5px：上下留出 10px 、左右留出 5px；</p>
-                  <p>③ 15px 10px 5px：上留出 15px、左右留出 10px、下留出 5px；</p>
-                  <p>④ 20px 15px 10px 5px：上留出 20px、右留出 15px、下留出 10px、左留出 5px。</p>
+                <el-input v-model="elementInfo.style.padding" />
+              </el-form-item>
+              <el-form-item label="元素外边距" prop="margin">
+                <template #label>
+                  元素外边距
+                  <el-tooltip effect="dark" placement="top-start">
+                    <template #content>
+                      <p>解释：元素边框与相邻元素之间留出的空白区域。</p>
+                      <p>举例：</p>
+                      <p>① 10px：上下左右留出的空白区域都是 10px；</p>
+                      <p>② 10px 5px：上下留出 10px 、左右留出 5px；</p>
+                      <p>③ 15px 10px 5px：上留出 15px、左右留出 10px、下留出 5px；</p>
+                      <p>
+                        ④ 20px 15px 10px 5px：上留出 20px、右留出 15px、下留出 10px、左留出 5px。
+                      </p>
+                    </template>
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-tooltip>
                 </template>
-                <el-icon><InfoFilled /></el-icon>
-              </el-tooltip>
-            </template>
-            <el-input v-model="elementInfo.style.margin" />
-          </el-form-item>
-          <el-form-item label="行数" prop="rows" v-show="elementInfo.tagType === 'TEXTAREA'">
-            <el-input-number v-model="elementInfo.rows" :min="1" />
-          </el-form-item>
-          <el-form-item
-            prop="options"
-            label-width="0"
-            v-show="['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType!)"
-          >
-            <el-divider content-position="left">下拉选择项（拖拽自动排序）</el-divider>
-            <Draggable
-              class="draggable"
-              ghost-class="ghost-class"
-              chosen-class="chosen-class"
-              itemKey="id"
-              animation="300"
-              handle=".operation-icon"
-              :list="elementInfo.options"
-            >
-              <template #item="{ element, index }">
-                <el-row :gutter="10" class="option-item" align="bottom" v-show="index !== 0">
-                  <el-col :span="2"
-                    ><el-icon class="operation-icon" color="var(--el-color-info)"
-                      ><Operation /></el-icon
-                  ></el-col>
-                  <el-col :span="20"><el-input v-model="element.label"> </el-input></el-col>
-                  <el-col :span="2">
-                    <el-icon
-                      class="remove-icon"
-                      color="var(--el-color-danger)"
-                      @click="handleRemove(element.id)"
-                      ><Remove
-                    /></el-icon>
-                  </el-col>
-                </el-row>
-              </template>
-            </Draggable>
-            <el-link type="primary" icon="CirclePlus" @click="handleAddOption"
-              >&ensp;添加选择项</el-link
-            >
-            <el-divider />
-          </el-form-item>
-        </el-form>
+                <el-input v-model="elementInfo.style.margin" />
+              </el-form-item>
+              <el-form-item label="行数" prop="rows" v-show="elementInfo.tagType === 'TEXTAREA'">
+                <el-input-number v-model="elementInfo.rows" />
+              </el-form-item>
+              <el-form-item
+                prop="options"
+                label-width="0"
+                v-show="['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType!)"
+              >
+                <el-divider content-position="left">下拉选择项（拖拽自动排序）</el-divider>
+                <Draggable
+                  class="draggable"
+                  ghost-class="ghost-class"
+                  chosen-class="chosen-class"
+                  itemKey="id"
+                  animation="300"
+                  handle=".operation-icon"
+                  :list="elementInfo.options"
+                >
+                  <template #item="{ element, index }">
+                    <el-row :gutter="10" class="option-item" align="bottom" v-show="index !== 0">
+                      <el-col :span="2"
+                        ><el-icon class="operation-icon" color="var(--el-color-info)"
+                          ><Operation /></el-icon
+                      ></el-col>
+                      <el-col :span="20"><el-input v-model="element.label"> </el-input></el-col>
+                      <el-col :span="2">
+                        <el-icon
+                          class="remove-icon"
+                          color="var(--el-color-danger)"
+                          @click="handleRemove(element.id)"
+                          ><Remove
+                        /></el-icon>
+                      </el-col>
+                    </el-row>
+                  </template>
+                </Draggable>
+                <el-link type="primary" icon="CirclePlus" @click="handleAddOption"
+                  >&ensp;添加选择项</el-link
+                >
+                <el-divider />
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+          <el-tab-pane label="页面信息">
+            <el-form :model="pageInfo" label-width="98px">
+              <el-form-item label="行高" prop="line-height">
+                <el-input-number
+                  controls-position="right"
+                  v-model="pageInfo.style['line-height']"
+                  :min="1"
+                  :step="0.1"
+                />
+              </el-form-item>
+              <el-form-item label="字号" prop="font-size">
+                <el-input v-model="pageInfo.style['font-size']"> </el-input>
+              </el-form-item>
+            </el-form>
+          </el-tab-pane>
+        </el-tabs>
       </el-aside>
     </el-container>
   </div>
@@ -375,7 +457,7 @@ function handleRemove(id: string) {
 
 <style scoped>
 .right-board {
-  width: 330px;
+  width: 350px;
   padding: 10px;
   border: 1px solid #ccc;
 }
