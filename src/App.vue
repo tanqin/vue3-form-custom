@@ -180,6 +180,41 @@ async function getTemplateStr() {
 
 getTemplateStr()
 
+/**
+ * 切换样式对象形式与字符串形式。若传入对象形式，则转换为字符串形式；若传入字符串形式，则转换为对象形式
+ *
+ * @param originStyle 原样式
+ * @return targetStyle 目标样式
+ */
+function toggleStyleObjectWithStr<
+  T extends string | CSSProperties | undefined,
+  R = T extends string ? CSSProperties : T extends CSSProperties ? string : undefined
+>(originStyle: T): R {
+  let targetStyle: R
+  if (typeof originStyle === 'object') {
+    // 若传入对象形式，则转换为字符串形式
+    targetStyle = Object.entries(originStyle)
+      .map(([key, value]) => `${key}:${value}`)
+      .join(';') as R
+  } else if (typeof originStyle === 'string') {
+    // 若传入字符串形式，则转换为对象形式
+    targetStyle = originStyle.split(';').reduce((result: CSSProperties, prop) => {
+      // 获取 css 样式属性的键与值
+      const [key, value] = prop
+        .split(':')
+        .map((item) => item.trim()) as unknown as TCSSPropertyTuple
+      if (key && value) {
+        result[key] = value
+      }
+      return result
+    }, {}) as R
+  } else {
+    targetStyle = undefined as R
+  }
+
+  return targetStyle
+}
+
 // 元素信息改变时，处理模板 html
 watchEffect(() => {
   const { tagType, fieldName, style, rows, options } = elementInfo
@@ -196,25 +231,12 @@ watchEffect(() => {
     // 匹配旧元素样式字符串
     const oldElementStyleStr = elementStyleMatch?.[0] || ''
     // 旧元素样式字符串转对象形式
-    const oldElementStyleObj = oldElementStyleStr
-      .split(';')
-      .reduce((result: CSSProperties, prop) => {
-        // 获取 css 样式属性的键与值
-        const [key, value] = prop
-          .split(':')
-          .map((item) => item.trim()) as unknown as TCSSPropertyTuple
-        if (key && value) {
-          result[key] = value
-        }
-        return result
-      }, {})
+    const oldElementStyleObj = toggleStyleObjectWithStr(oldElementStyleStr)
 
     // 合并生成新元素样式对象
     const newElementStyleObj = Object.assign(oldElementStyleObj, style)
     // 新元素样式对象转字符串形式
-    let newElementStyleStr = Object.entries(newElementStyleObj)
-      .map(([key, value]) => `${key}:${value}`)
-      .join(';')
+    let newElementStyleStr = toggleStyleObjectWithStr(newElementStyleObj)
 
     // 新元素 html 字符串
     let newElementHTMLStr = ''
@@ -254,14 +276,7 @@ function setPageInfo() {
   // 页面样式字符串
   const pageStyleStr = templateRef.value?.lastElementChild?.attributes[0]?.value || ''
   // 页面样式字符串转对象形式
-  const pageStyleObj = pageStyleStr.split(';').reduce((result: CSSProperties, prop) => {
-    // 获取 css 样式属性的键与值
-    const [key, value] = prop.split(':').map((item) => item.trim()) as unknown as TCSSPropertyTuple
-    if (key && value) {
-      result[key] = value
-    }
-    return result
-  }, {})
+  const pageStyleObj = toggleStyleObjectWithStr(pageStyleStr)
   // 若存在行高，则将行高字符串转为数字形式
   pageStyleObj['line-height'] && (pageStyleObj['line-height'] = Number(pageStyleObj['line-height']))
   pageInfo.style = pageStyleObj
@@ -270,14 +285,14 @@ function setPageInfo() {
 // 页面信息改变时，处理模板 html
 watch(
   () => pageInfo.style,
-  (style) => {
-    const styleStr = Object.entries(style)
-      .map(([key, value]) => `${key}:${value}`)
-      .join(';')
-    if (styleStr) {
+  (newPageStyleObj) => {
+    // 新页面样式对象转字符串形式
+    const newPageStyleStr = toggleStyleObjectWithStr(newPageStyleObj)
+    if (newPageStyleStr) {
+      // 如果新页面样式字符串不为空，则替换为新的样式
       templateHtmlStr.value = templateHtmlStr.value.replace(
         /<div[^>]*>/,
-        `<div style="${styleStr}">`
+        `<div style="${newPageStyleStr}">`
       )
     }
   },
