@@ -11,6 +11,7 @@ import {
 import { getTemplateStrAPI } from '@/apis'
 import { tagTypeList } from '@/enums/app.enum'
 import type {
+  TInputType,
   TOption,
   TElementInfo,
   TTagType,
@@ -45,6 +46,7 @@ const defaultOptions: TOption[] = [
 const elementInfo = reactive<TElementInfo>({
   tagType: undefined,
   fieldName: '',
+  inputType: 'text',
   style: {
     width: ''
   },
@@ -99,7 +101,9 @@ function onFocus(e: FocusEvent) {
     padding: targetElement.style.padding,
     margin: targetElement.style.margin
   }
-  if (elementInfo.tagType === 'TEXTAREA') {
+  if (elementInfo.tagType === 'INPUT') {
+    elementInfo.inputType = (targetElement as HTMLInputElement).type as TInputType
+  } else if (elementInfo.tagType === 'TEXTAREA') {
     elementInfo.rows = Number(targetElement.getAttribute('rows') || 6)
   } else if (['SELECT', 'INPUT_DATALIST'].includes(elementInfo.tagType)) {
     // 要匹配的标签
@@ -217,7 +221,7 @@ function toggleStyleObjectWithStr<
 
 // 元素信息改变时，处理模板 html
 watchEffect(() => {
-  const { tagType, fieldName, style, rows, options } = elementInfo
+  const { tagType, fieldName, inputType, style, rows, options } = elementInfo
   if (!tagType) return
   // 定义查找表单元素（input、textarea、select）的正则表达式。说明：(input|textarea|select)分组捕获、\s空白符类、[^ ]取反字符集 共同匹配表单元素开始标签；*? 非贪婪匹配、\1第一个捕获组 共同匹配表单内容和结束标签；\s空白符类、[^ ]取反字符集共同匹配 datalist 标签（当元素类型为【单行输入框（可下拉选择）】时生效）。
   const elementRegExp = new RegExp(
@@ -251,7 +255,7 @@ watchEffect(() => {
       .join('')
     switch (tagType) {
       case 'INPUT':
-        newElementHTMLStr = `<input data-column="${fieldName}" style="${newElementStyleStr}" />`
+        newElementHTMLStr = `<input data-column="${fieldName}" type="${inputType}" style="${newElementStyleStr}" />`
         break
       case 'TEXTAREA':
         newElementStyleStr = newElementStyleStr.includes('resize:none')
@@ -362,6 +366,26 @@ function handleRemove(id: string) {
               <el-form-item label="字段名" prop="fieldName">
                 <el-input v-model="elementInfo.fieldName" disabled />
               </el-form-item>
+              <el-form-item prop="inputType" v-show="elementInfo.tagType === 'INPUT'">
+                <template #label>
+                  输入类型
+                  <el-tooltip effect="dark" placement="top-end">
+                    <template #content>
+                      <p>解释：单行输入框允许输入的内容类型。</p>
+                      <p>①字符类型：允许输入任意字符串类型内容；</p>
+                      <p>②数字类型：仅允许输入数字类型内容。</p>
+                    </template>
+                    <el-icon><InfoFilled /></el-icon>
+                  </el-tooltip>
+                </template>
+                <el-switch
+                  v-model="elementInfo.inputType"
+                  active-text="数字类型"
+                  inactive-text="字符类型"
+                  active-value="number"
+                  inactive-value="text"
+                />
+              </el-form-item>
               <el-form-item label="元素宽度" prop="width">
                 <el-input v-model="elementInfo.style.width" />
               </el-form-item>
@@ -371,7 +395,7 @@ function handleRemove(id: string) {
               <el-form-item prop="padding">
                 <template #label>
                   元素内边距
-                  <el-tooltip effect="dark" placement="top-start">
+                  <el-tooltip effect="dark" placement="top-end">
                     <template #content>
                       <p>解释：元素边框与其实际内容之间留出的空白区域。</p>
                       <p>举例：</p>
@@ -390,7 +414,7 @@ function handleRemove(id: string) {
               <el-form-item label="元素外边距" prop="margin">
                 <template #label>
                   元素外边距
-                  <el-tooltip effect="dark" placement="top-start">
+                  <el-tooltip effect="dark" placement="top-end">
                     <template #content>
                       <p>解释：元素边框与相邻元素之间留出的空白区域。</p>
                       <p>举例：</p>

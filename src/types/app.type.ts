@@ -4,6 +4,9 @@ import type { CSSProperties } from 'vue'
 /* 标签类型。说明：typeof ETagType 将枚举转成 type 类型；keyof 获取 type 类型中所有 key 组成联合类型 */
 export type TTagType = keyof typeof ETagType
 
+/* 输入类型。'number'-支持输入数字类型 'text'-支持输入字符类型 */
+export type TInputType = 'number' | 'text'
+
 /* 下拉选择项 */
 export type TOption = {
   // 选择项主键
@@ -20,6 +23,8 @@ export type TElementInfo = {
   tagType?: TTagType
   // 字段名
   fieldName: string
+  // 输入类型
+  inputType: TInputType
   // 元素样式
   style: CSSProperties
   // 行数（textarea 元素专属）
